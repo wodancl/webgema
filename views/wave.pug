@@ -1,0 +1,39 @@
+extends layout
+block content
+    .jumbotron
+        .row
+            .col-md-2(style='margin-top: -10px;')
+                button#sidebarCollapse.btn.btn-info(type='button', style='margin-top: -100px;')
+                 i.fas.fa-align-left Menu 
+            .col-md-4(style='margin-top: -10px;')     
+                button.btn.btn-primary#pause(type='button', style='margin-top: -100px;') Pause
+                button.btn.btn-primary#disconnect(type='button', style='margin-top: -100px;') Disconnect     
+        #live.tab-pane.active.show
+
+        .realtime
+    script(src='https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js')
+    script(src="/javascripts//seisplotjs_waveformplot_1.2.4_standalone.js")
+    script(src="/javascripts//seisplotjs_seedlink_1.2.0_standalone.js")
+    script(src="/javascripts//seisplotjs_filter_1.2.0_standalone.js")
+    script(src="/javascripts//do_plot.js")
+    script.
+        window.onload = function() {
+            imgAjax();
+        };
+        $(document).ready(function () {
+                $("#sidebar").mCustomScrollbar({
+                    theme: "minimal"
+                });
+
+                $('#dismiss, .overlay').on('click', function () {
+                    $('#sidebar').removeClass('active');
+                    $('.overlay').removeClass('active');
+                });
+
+                $('#sidebarCollapse').on('click', function () {
+                    $('#sidebar').addClass('active');
+                    $('.overlay').addClass('active');
+                    $('.collapse.in').toggleClass('in');
+                    $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+                });
+            });

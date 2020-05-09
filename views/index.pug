@@ -1,0 +1,708 @@
+extends layout
+block content
+  //-#ping
+  .jumbotron
+    .row
+      .col-md-1(style='margin-top: -10px;')
+        button#sidebarCollapse.btn.btn-info(type='button', style='margin-top: -100px;')
+          i.fas.fa-align-left Menu
+      .col-md-6
+        #alerta(style='margin-top: -70px;')
+    .row
+      .col-sm-8(style='margin-top: -30px;')
+        table#locTable.display(style='margin-top: -10px;')
+        p "Declaración: La localización de todo evento automático está sujeto a grandes incertezas, por lo cual debe ser revisado apropiadamente por un geofísico"
+      .col-sm-4
+        #map(style='width: 100%; height: 600px; margin-top: -60px;') 
+        h4(aling='center') Legend
+        .row
+          .col-sm-4
+            table
+              tr.table-primary
+                th(scope='row') Names
+                th(scope='row') Icons
+              tr.table-primary
+                td Volcano
+                td 
+                  img(width='20' height='20' src='/images/volcan.svg')
+              tr.table-primary
+                td Dam
+                td
+                  img(width='30' height='20' src='/images/dam.svg')
+              tr.table-primary
+                td Station
+                td
+                  img(width='30' height='20' src='/images/triangulo-invertido.svg')
+              tr.table-primary
+                td lineaments
+                td
+                  svg(height='20' width='30')
+                    line(x1='10' y1='2' x2='20' y2='30' style='stroke:#B478F0;stroke-width:2')
+
+              tr.table-primary
+                th(scope='row') Seismic Event
+                th(scope='row')
+              tr.table-primary
+                td Confirmed
+                td 
+                  img(width='15' height='15' src='/images/cruz.svg')
+              tr.table-primary
+                td Revised
+                td
+                  img(width='15' height='15' src='/images/estrella.svg')
+              tr.table-primary
+                td Automatic
+                td
+                  img(width='15' height='15' src='/images/contorno.svg') 
+          .col-sm-4
+            table  
+              tr.table-primary
+                th(scope='row') Time Last
+                th(scope='row') Color
+              tr.table-primary
+                td Week
+                td 
+                  img(width='25' height='25' src='/images/circulo_rojo.svg')
+              tr.table-primary
+                td Month
+                td
+                  img(width='25' height='25' src='/images/circulo_amarillo.svg')
+              tr.table-primary
+                td Six Month
+                td
+                  img(width='25' height='25' src='/images/circulo_verde.svg')                       
+
+                              
+
+
+
+
+  .jumbotron  
+    h4(align='center') Thermal Alert Lonquimay
+    table#thermal_lonq.display(width='100%')
+  .jumbotron    
+    h4(align='center') Thermal Alert Callaqui
+    table#thermal_call.display(width='100%')
+  .jumbotron    
+    h4(align='center') Thermal Alert Copahue
+    table#thermal_cop.display(width='100%')
+
+
+  .jumbotron
+    h4(align='center') Warning
+    table#warning.display(width='100%')
+
+
+  .container
+      #Modal.modal.fade(width='100%' tabindex='-1' role='dialog' aria-labelledby='exampleModalCenterTitle' aria-hidden='true')
+        .modal-dialog.modal-dialog-centered(role='document')
+          .modal-content
+            .modal-header
+              button.close(type='button' data-dismiss='modal') &times;
+              h4.modal-title 
+            .modal-body
+              #content
+
+  script.
+    /*ejecutar al inicio */
+    window.onload = function() {
+      homeAjax();
+      WarnAjax();
+      ThermalAjax();
+      check_staciones();
+
+   };
+    /*map*/
+    var station = L.layerGroup();
+    var event_all = L.layerGroup();
+    var thermal_all = L.layerGroup();
+    var event_week = L.layerGroup();
+    var event_month= L.layerGroup();
+    var event_siexmonth= L.layerGroup();
+    var thermal_event = L.layerGroup();
+    var markers = [];
+
+
+    var map = L.map('map', {
+     center: [-37.903373, -71.530828],
+     zoom: 8,
+     layers: [station, event_week,event_month, event_siexmonth,thermal_event ]
+     });
+    /*atributos mapa*/
+    
+    var stations = {"station": station};
+    var event_alls =  { "Ultima semana": event_week,
+                       "Ultimo mes":event_month,
+                       "Ultimos seis meses": event_siexmonth,
+                       "Alertas termales":thermal_event  };
+  
+    L.control.layers(stations, event_alls).addTo(map);
+    var layer = L.esri.basemapLayer('Topographic').addTo(map);
+     /*load mkl*/
+    fetch('/kml/lineamientos.kml')
+        .then(res => res.text())
+        .then(kmltext => {
+                    // Create new kml overlay
+        const parser = new DOMParser();
+        const kml = parser.parseFromString(kmltext, 'text/xml');
+        const track = new L.KML(kml);
+        map.addLayer(track);
+        const bounds = track.getBounds();
+        map.fitBounds(bounds);
+                });
+
+    /*funciones de mapa*/
+   function markerOnClick(e){
+        $('#Modal').modal({
+          keyboard: true,
+          backdrop: "static"
+        });
+        document.getElementById("content").innerHTML = "Cargando...";
+        let data = {};
+        let popup = e.target.getPopup();
+        let content = popup.getContent();
+        let init=5;
+        let fin=25;
+        content_split= content.split("<br>");
+        string_time=content_split[1]
+        subtime= string_time.substring(init,fin);
+        let timeget=new Date(subtime);
+        console.log(timeget);
+        data.time = timeget;
+                $.ajax({
+                      type: 'POST',
+                      data: JSON.stringify(data),
+                      contentType: 'application/json',
+                      url: '/img_map',	
+                      dataType: 'json',					
+                      success: function(data) {
+                      }, 
+                      complete: function (data) {
+                          if (data.responseText == "noimagen"){
+                          document.getElementById("content").innerHTML = "<div class='alert alert-success'>No se encontro imagen para el evento seleccionado.</div>";
+                          }else{
+                          var json = eval(JSON.parse(data.responseText));
+                          for (var i = 0; i < json.length; i++){
+                              var img= json[i].img
+                              //console.log(img)
+                              let img_old='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="136.385pt" version="1.1" viewBox="0 0 194.32 136.385" width="194.32pt">'
+                              let img_now='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="300pt" version="1.1" viewBox="0 0 194.32 136.385" width="340pt">'
+                              let img_old_2='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="154.205pt" version="1.1" viewBox="0 0 194.32 136.385" width="275.892188pt">'
+                              img=img.replace(img_old,img_now);
+                              img=img.replace(img_old_2,img_now);
+                              document.getElementById("content").innerHTML = img;
+
+
+                          }}    
+            }
+      });
+    }
+	
+
+    /*estationes*/
+    //-L.marker([-35.7626, -71.418098],{icon: IconStation}).bindPopup('C1.ML02 ').addTo(station);
+    L.marker([-36.663399, -71.273102 ],{icon: IconStation}).bindPopup('C1.BI02 ').addTo(station);
+     //-L.marker([-36.74784, -73.19051],{icon: IconStation}).bindPopup('C1.BI05 ').addTo(station); 
+    L.marker([-37.903373, -71.530828],{icon: IconStation}).bindPopup('GM.CALL ').addTo(station); 
+    L.marker([-37.95503, -71.243552],{icon: IconStation}).bindPopup('GM.COPA ').addTo(station);
+    L.marker([-37.992413, -71.459041],{icon: IconStation}).bindPopup('GM.MAYA ').addTo(station);
+    L.marker([-38.032703, -71.305818],{icon: IconStation}).bindPopup('GM.COP2 ').addTo(station);
+    L.marker([-37.89899, -71.3618],{icon: IconStation}).bindPopup('GM.MULA ').addTo(station);
+    L.marker([-38.372425, -71.67816],{icon: IconStation}).bindPopup('GM.TOL1 ').addTo(station);
+    L.marker([-38.389073, -71.565328],{icon: IconStation}).bindPopup('GM.LONQ ').addTo(station);
+    //-L.marker([-38.41161, -73.886223],{icon: IconStation}).bindPopup('C1.BI04 ').addTo(station);
+    L.marker([-38.462052, -71.683345],{icon: IconStation}).bindPopup('GM.MANZ ').addTo(station);
+    //-L.marker([-38.791889, -73.394707],{icon: IconStation}).bindPopup('C1.LC02 ').addTo(station);
+    //-L.marker([-38.897499, -71.876099],{icon: IconStation}).bindPopup('C1.LC01 ').addTo(station);
+    //-L.marker([-39.486145, -72.15313],{icon: IconStation}).bindPopup('C1.LC09 ').addTo(station);
+    L.marker([-37.8531181,-71.1708865],{icon: IconVolcano}).bindPopup('Capahue').addTo(station);
+    L.marker([-37.9166662,-71.4587548],{icon: IconVolcano}).bindPopup('Callaqui').addTo(station);
+    L.marker([-38.3808324,-71.5954214],{icon: IconVolcano}).bindPopup('Lonquimay').addTo(station);
+    L.marker([-38.3099992,-71.6537548],{icon: IconVolcano}).bindPopup('Tolhuaca').addTo(station);
+    
+
+    L.marker([-37.910009,-71.6146875],{icon: Icon_dam}).bindPopup('Central hidroeléctrica Pangue').addTo(station);
+    L.marker([-38.0382531,-71.4768887],{icon: Icon_dam}).bindPopup('Central hidroeléctrica Ralco').addTo(station);
+
+    L.control.scale().addTo(map);
+
+    
+    /*cargar mapa*/
+    var interval = 60000; 
+    function homeAjax() {
+                let data= {};
+                let datajson= {};
+                console.log("consultando eventos")
+                        $.ajax({
+                                type: 'POST',
+                                url: '/map',  
+                                data: JSON.stringify(data),
+                                contentType: 'application/json',  
+                                dataType: 'json',
+                                success: function (data) {
+                                },
+                                complete: function (data) {
+                                setTimeout(homeAjax, interval);
+                                var json = eval(JSON.parse(data.responseText));
+                              
+                                var table = $('#locTable').DataTable( {
+                                  order: [[ 0, "desc" ]],
+                                  bLengthChange: false,
+                                  scrollY: 500,
+                                  scrollCollapse: true,
+                                  searching: false,
+                                  pageLength: 25,
+                                  bLengthChange: false,
+                                  paging: false,
+                                  retrieve: true,
+                                        data: json,
+                                        columns: [
+                                          {title: "Time","data" : "time",             render: function (data, type, row) {
+                                            if (type === 'display' || type === 'filter') {
+                                              return moment(data).format('MM-DD-YYYY HH:mm:ss');
+                                              } else {
+                                                return data;
+                                                }
+                                                }
+                                           },
+                                          {title: "Lon","data" : "longitude" },
+                                          {title: "Lat","data" : "latitude" },
+                                          {title: "Depth","data" : "depth" },
+                                          {title: "Magnitude","data" : "magnitude" },
+                                          {title: "Status","data" : "status", render: function (data, type, row) {
+                                            if (data =="manual") {
+                                                data="revised";
+                                                return data;
+                                              }
+                                              else{
+                                                return data;
+                                              }
+                                              } 
+                                            }
+                                        ]
+                                    } );
+                                   $('#locTable tbody').on('click', 'tr', function () {
+                                         var data = table.row( this ).data();
+                                         call_img(data.time);
+                                         
+                                         
+                                    } );
+                                
+                              
+                              
+                                for (var i = 0; i < json.length; i++) {      
+                                           var longitude= json[i].longitude
+                                           var latitude= json[i].latitude
+                                           var status= json[i].status
+                                           var time= json[i].time  
+                                           var depth= json[i].depth
+                                           var magnitude= json[i].magnitude
+                                           var rms= json[i].rms
+                                           var gap= json[i].gap
+                                           var dx= json[i].dx
+                                           var dy= json[i].dy
+                                           var dz= json[i].dz
+                                           var img= json[i].img
+                                           var statatus= json[i].status
+                                           
+
+                                           let fecha = Date.now();
+                                           let semanaatras=new Date(fecha-604800000);
+                                           let mesatras=new Date(fecha-2678400000);
+                                           let seismesatras=new Date(fecha-15552000000);
+                                           let timeget=new Date(time);
+                                           dateTime = moment(timeget).format("YYYY-MM-DD HH:mm:ss");
+                                  if (timeget >= semanaatras && status == 'confirmed') {
+
+                                              L.marker([latitude, longitude],{icon: IconEvent_red_cruz, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_week);
+
+                                              }else if ( timeget >= semanaatras && status == 'manual'){
+                                              status="revised";
+                                              L.marker([latitude, longitude],{icon: IconEvent_red, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_week);
+
+                                              }else if (timeget >= semanaatras && status == 'automatic') { 
+                                                                                              
+                                              L.marker([latitude, longitude],{icon: IconEvent_red_start, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_week);
+                                                                                        
+                                              }else if ((timeget > mesatras && timeget < semanaatras) && (status == 'confirmed')) { 
+
+                                              L.marker([latitude, longitude],{icon: IconEvent_yellow_cruz, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_month);
+
+                                              } else if ((timeget > mesatras && timeget < semanaatras) && (status == 'manual')) { 
+                                              status="revised";
+
+                                              L.marker([latitude, longitude],{icon: IconEvent_yellow, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_month);
+
+                                              }else if ((timeget > mesatras && timeget < semanaatras) && (status == 'automatic')) { 
+
+                                              L.marker([latitude, longitude],{icon: IconEvent_yellow_start, title: timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_month);
+
+                                              } else if ((timeget > seismesatras && timeget < mesatras  )&& (status == 'confirmed') ) {
+                                              L.marker([latitude, longitude],{icon: IconEvent_green_cruz, title:timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_siexmonth);
+
+                                              }else if ((timeget > seismesatras && timeget < mesatras  )&& (status == 'manual') ) {
+                                              status="revised";
+
+                                              L.marker([latitude, longitude],{icon: IconEvent_green, title:timeget}).bindPopup('status: '+ status + '<br>time:'+ dateTime +'<br>latitude: '+latitude +'<br>longitude: '+longitude+'<br> depth: '+depth+'<br> magnitude: '+magnitude+'<br> rms: '+rms+'<br> gap: '+gap).openPopup('evento').on('click', markerOnClick).addTo(event_siexmonth);
+
+                                              } else {
+                                              //console.log(status, dateTime )
+                                              }
+
+
+                                   }
+                                }
+                        });
+                        }
+     setTimeout(homeAjax, interval);
+
+    //-warning ajx 
+
+    
+    function WarnAjax() {
+        let data= {};
+                $.ajax({
+                        type: 'POST',
+                        url: '/warning',  
+                        data: JSON.stringify(data),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function (data) {
+                             //   document.getElementById("warning").innerHTML = data;
+                        },
+                        complete: function (data) {
+
+                        var json = eval(JSON.parse(data.responseText));
+
+
+                        $('#warning').DataTable( {
+                              order: [[ 0, "desc" ]],
+                              retrieve: true,
+                                  data: json,
+                                 
+                                  columns: [
+                                    {title: "Time","data" : "time",             render: function (data, type, row) {
+                                            if (type === 'display' || type === 'filter') {
+                                              return moment(data).format('MM-DD-YYYY HH:mm:ss');
+                                              } else {
+                                                return data;
+                                                }
+                                                }
+                                           },
+                                     {title: "Source","data" : "source" },
+                                     {title: "Comment", "data" : "comment" }
+                                  ]
+                              } );
+
+                         setTimeout(WarnAjax, interval);
+                  
+                        }
+                });
+                }
+    setTimeout(WarnAjax, interval);
+
+
+
+
+
+    /*thermal*/
+
+    function ThermalAjax() {
+        let data= {};
+        var data_lonq = new Array();
+        var data_cop = new Array();
+        var data_call = new Array(); 
+
+                $.ajax({
+                        type: 'POST',
+                        url: '/thermal',  
+                        data: JSON.stringify(data),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function (data) {
+                        },
+                        complete: function (data) {
+                        setTimeout(ThermalAjax, interval);
+                        var json = eval(JSON.parse(data.responseText));
+                            for (var i = 0; i < json.length; i++) { 
+                              var longitude= json[i].longitude
+                              var latitude= json[i].latitude
+                              var time= json[i].time  
+                              var NTI= json[i].NTI
+                              var volcano= json[i].volcano
+                              var mission= json[i].mission
+                              var distance= json[i].distance
+                              var azimuth= json[i].azimuth
+                              var serverid= json[i].serverid
+                              var quality= json[i].quality
+                              var VRP= json[i].VRP
+                              let timeget=new Date(time);
+                              dateTime = moment(timeget).format("YYYY-MM-DD HH:mm:ss");
+                              L.marker([latitude, longitude],{icon: IconThermal_start, title: timeget}).bindPopup( 'time: '+dateTime+'<br> longitude: '+longitude+'<br> latitude: '+latitude+'<br> NTI: '+NTI+'<br> volcano: '+volcano+'<br> mission: '+mission+'<br> azimuth: '+azimuth+'<br> serverid: '+serverid+'<br> VPR: '+VRP).openPopup('evento').addTo(thermal_event);
+                              
+                              if(volcano.includes('Lonquimay')){
+                              data_lonq.push({"time":time,"NTI":NTI,"distance":distance,"azimuth":azimuth,"VRP":VRP,"quality":quality});
+                
+
+                              }
+                              if(volcano.includes('Callaqui')){
+                              data_call.push({"time":time,"NTI":NTI,"distance":distance,"azimuth":azimuth,"VRP":VRP,"quality":quality});
+
+                              }
+                              if(volcano.includes('Copahue')){
+                              data_cop.push({"time":time,"NTI":NTI,"distance":distance,"azimuth":azimuth,"VRP":VRP,"quality":quality});
+                              }
+                              if(volcano.includes('Tolhuaca')){
+                              data_tol.push({"time":time,"NTI":NTI,"distance":distance,"azimuth":azimuth,"VRP":VRP,"quality":quality});
+
+                              }
+
+                      }  //, NTI (float con dos decimales), VRP (exponencial base 10), distance, azimuth, quality
+
+                              $('#thermal_lonq').DataTable( {
+                                  order: [[ 0, "desc" ]],
+                                  retrieve: true,
+                                  data: data_lonq,
+                                  columns: [
+                                            {title: "Time","data" : "time",
+                                            render: function (data, type, row) {
+                                            if (type === 'display' || type === 'filter') {
+                                              return moment(data).format('MM-DD-YYYY HH:mm:ss');
+                                              } else {
+                                                return data;
+                                                }
+                                                }
+                                           },
+                                     {title: "NTI","data" : "NTI",
+                                            render: function (data, type, full) {
+                                                  return data.toString().match(/\d+(\.\d{1,2})?/g)[0];
+                                                }  
+                                            },                                     
+                                     {title: "VRP","data" : "VRP",
+                                            render: function(data, type, full){
+                                                  return data.toExponential();
+                                                }
+                                            },
+                                     {title: "Distance","data" : "distance" },
+                                     {title: "Azimuth","data" : "azimuth" },
+                                     {title: "quality","data" : "quality" },
+
+
+                                  ]
+                              } );
+
+
+
+                              $('#thermal_call').DataTable( {
+                                  order: [[ 0, "desc" ]],
+                                  retrieve: true,
+                                  data: data_call,
+                                  columns: [
+                                            {title: "Time","data" : "time",
+                                            render: function (data, type, row) {
+                                            if (type === 'display' || type === 'filter') {
+                                              return moment(data).format('MM-DD-YYYY HH:mm:ss');
+                                              } else {
+                                                return data;
+                                                }
+                                                }
+                                           },                                     
+                                     {title: "NTI","data" : "NTI",
+                                            render: function (data, type, full) {
+                                                  return data.toString().match(/\d+(\.\d{1,2})?/g)[0];
+                                                }  
+                                            },                                       
+                                      {title: "VRP","data" : "VRP",
+                                            render: function(data, type, full){
+                                                  return data.toExponential();
+                                                }
+                                            },
+                                     {title: "Distance","data" : "distance" },
+                                     {title: "Azimuth","data" : "azimuth" },
+                                     {title: "quality","data" : "quality" },
+                                  ]
+                              } );
+                              
+                              $('#thermal_cop').DataTable( {
+                                  order: [[ 0, "desc" ]],
+                                  retrieve: true,
+                                  data: data_cop,
+                                  columns: [
+                                            {title: "Time","data" : "time",
+                                            render: function (data, type, row) {
+                                            if (type === 'display' || type === 'filter') {
+                                              return moment(data).format('MM-DD-YYYY HH:mm:ss');
+                                              } else {
+                                                return data;
+                                                }
+                                                }
+                                           },                                     
+                                     {title: "NTI","data" : "NTI",
+                                            render: function (data, type, full) {
+                                                  return data.toString().match(/\d+(\.\d{1,2})?/g)[0];
+                                                }  
+                                            },                                   
+                                       {title: "VRP","data" : "VRP",
+                                            render: function(data, type, full){
+                                                  return data.toExponential();
+                                                }
+                                            },
+                                     {title: "Distance","data" : "distance" },
+                                     {title: "Azimuth","data" : "azimuth" },
+                                     {title: "quality","data" : "quality" },
+                                  ]
+                              } );
+
+
+
+                        }
+                });
+                }
+    setTimeout(ThermalAjax, interval);
+    
+
+
+   /*llamadas*/
+      [].slice.call(document.querySelectorAll("#locTable tr"), 1).forEach(function(row){
+        row.addEventListener("click", function(){
+           var ths = document.querySelectorAll("#locTable th");
+           var obj = [].reduce.call(ths, function(obj, th, i){
+               obj[th.textContent] = row.cells[i].textContent;
+               return obj;
+           }, {});
+        });
+
+      });
+   /*funcion buscar*/
+    $(document).ready(function(){
+      $("#locInput").on("keyup", function() {
+        var value = $(this).val().toLowerCase();
+        $("#locTable tr").filter(function() {
+          $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
+      });
+    });
+
+    /**/
+    function call_img(e){
+        $('#Modal').modal({
+          keyboard: true,
+          backdrop: "static"
+        });
+        document.getElementById("content").innerHTML = "Cargando... ";
+        let datatime = e;
+        let data = {};
+        data.time = datatime;
+        $.ajax({
+                      type: 'POST',
+                      data: JSON.stringify(data),
+                      contentType: 'application/json',
+                      url: '/img_map',	
+                      dataType: 'text',					
+                      success: function(data) {
+                      }, 
+                      complete: function (data) {
+
+                          console.log(data.responseText);
+                          //-console.log(Object.keys(json))
+                          if (data.responseText == "noimagen"){
+                          document.getElementById("content").innerHTML = "<div class='alert alert-success'>No se encontro imagen para el evento seleccionado.</div>";
+                          }else{
+                          var json = eval(JSON.parse(data.responseText));
+                          for (var i = 0; i < json.length; i++){
+                              var img= json[i].img
+                              var time= json[i].time
+                              let timeget=new Date(time);
+                              dateTime = moment(timeget).format("YYYY-MM-DD HH:mm:ss");
+                              let img_old='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="136.385pt" version="1.1" viewBox="0 0 194.32 136.385" width="194.32pt">'
+                              let img_now='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="300pt" version="1.1" viewBox="0 0 194.32 136.385" width="340pt">'
+                              let img_old_2='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="154.205pt" version="1.1" viewBox="0 0 194.32 136.385" width="275.892188pt">'
+                              img=img.replace(img_old,img_now);
+                              img=img.replace(img_old_2,img_now);
+
+                              document.getElementById("content").innerHTML = img;
+                          } 
+                          }      
+               },
+                        failure: function(data){
+                            console.log("FAILED");
+                            console.log(data);
+                        }
+           });
+        }
+        function UrlExists(url,name, coordenadas){
+          var request = new XMLHttpRequest()
+          var url=url;
+          request.open('GET', 'https://helloacm.com/api/can-visit/?url=' + url, true)
+          request.onload = function() {
+          var data = JSON.parse(this.response)
+          if (data.code == 200 ) {
+            console.log(request.status, name)
+            
+            } else {
+              console.log('error')
+              $('#alerta').empty();
+              $('#alerta').append("<div class='alert alert-dismissible alert-danger'>  <button type='button' class='close' data-dismiss='alert'>&times;</button> <strong>Atentos! problemas en la estacion "+name+"</strong><a href="+url+" class='alert-link'> Link a la estacion</a></div>");
+
+            }
+          }
+          request.send()
+        }
+
+
+        function check_staciones(){
+        var text = '{"estaciones":[' +
+          '{"name":"CALL","url":"http://callaquiudec.dyndns.org:8000/","coordenadas":"-37.903373, -71.530828"},' +
+          '{"name":"MULA","url":"http://lamulaudec.dyndns.org:8000/","coordenadas":"-37.89899, -71.3618"},' +
+          '{"name":"TOL1","url":"http://lagunablancaudec.dyndns.org:8000/","coordenadas":"-38.372425, -71.67816"},' +
+          '{"name":"LONQ","url":"http://lonquimayudec.dyndns.org:8000/","coordenadas":"-38.389073, -71.565328"},' +
+          '{"name":"MANZ","url":"http://manzanarudec.dyndns.org:8000/","coordenadas":"-38.462052, -71.683345" },' +
+          '{"name":"COPA","url":"http://copahueudec.dyndns.org:8001/","coordenadas":"-37.95503, -71.243552" },' +
+          '{"name":"COP2","url":"http://copahueudec.dyndns.org:8000/","coordenadas":"-38.032703, -71.305818" }]}';
+        
+        obj = JSON.parse(text);
+        for (var i = 0; i < 7; i++){
+          let name= obj.estaciones[i].name
+          let url= obj.estaciones[i].url
+          let coordenadas= obj.estaciones[i].coordenadas
+
+          UrlExists(url, name, coordenadas);
+        } 
+        setTimeout(check_staciones, interval);       
+        }
+        setTimeout(check_staciones, interval);    
+        
+            $(document).ready(function () {
+            $("#sidebar").mCustomScrollbar({
+                theme: "minimal"
+            });
+
+            $('#dismiss, .overlay').on('click', function () {
+                $('#sidebar').removeClass('active');
+                $('.overlay').removeClass('active');
+            });
+
+            $('#sidebarCollapse').on('click', function () {
+                $('#sidebar').addClass('active');
+                $('.overlay').addClass('active');
+                $('.collapse.in').toggleClass('in');
+                $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+            });
+        });
+
+      window.addEventListener('DOMContentLoaded', function () {
+            var galley = document.getElementById('content');
+            var viewer = new Viewer(galley, {
+                url: galley,
+                title: function (image) {
+                    return image.alt + ' (' + (this.index + 1) + '/' + this.length + ')';
+                    },
+            });
+        });  
+
+        const viewer = new Viewer(document.getElementById('content'), {
+          inline: true,
+          viewed() {
+            viewer.zoomTo(1);
+          },
+        });   

@@ -1,0 +1,184 @@
+extends layout
+block content
+    .jumbotron
+        .row
+            .col-md-1(style='margin-top: -10px;')
+                button#sidebarCollapse.btn.btn-info(type='button', style='margin-top: -100px;')
+                 i.fas.fa-align-left Menu
+        
+
+
+    script.
+        window.onload = function() {
+            imgAjax();
+        };
+        $(document).ready(function () {
+                $("#sidebar").mCustomScrollbar({
+                    theme: "minimal"
+                });
+
+                $('#dismiss, .overlay').on('click', function () {
+                    $('#sidebar').removeClass('active');
+                    $('.overlay').removeClass('active');
+                });
+
+                $('#sidebarCollapse').on('click', function () {
+                    $('#sidebar').addClass('active');
+                    $('.overlay').addClass('active');
+                    $('.collapse.in').toggleClass('in');
+                    $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+                });
+            });
+
+        window.addEventListener('DOMContentLoaded', function () {
+            var galley = document.getElementById('galley_cerro');
+            var viewer = new Viewer(galley, {
+                url: 'data-original',
+                title: function (image) {
+                    return image.alt + ' (' + (this.index + 1) + '/' + this.length + ')';
+                    },
+            });
+        });
+
+        var interval = 60000; 
+        function imgAjax() {
+        let data= {}; 
+                $.ajax({
+                        type: 'POST',
+                        url: '/galery_post',  
+                        data: JSON.stringify(data),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function (data) {
+                        },
+                        complete: function (data) {
+
+                        var json = eval(JSON.parse(data.responseText));
+                        console.log(json);
+                        for (var i = 0; i < json.length; i++){
+                            var name= json[i].name
+                            var id= json[i].id
+                        if (name.includes("cerro_pelado")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_cerro").appendChild(node);
+                        }
+                        if (name.includes("copahueudec")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_sra").appendChild(node);
+                        }
+                        if (name.includes("COPAHUE-elbarco")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_elbarco").appendChild(node);
+                        }
+                        if (name.includes("COPAHUE-caviahue")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_caviahue").appendChild(node);
+                        }
+                        if (name.includes("COPAHUE-mellizas")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_mellizas").appendChild(node);
+                        }
+                        if (name.includes("CALLAQUI-elbarco")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_callaqui_elbarco").appendChild(node);
+                        }
+                        if (name.includes("CALLAQUI-palmucho")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_callaqui_palmucho").appendChild(node);
+                        }
+                        if (name.includes("LONQUIMAY-elbarco")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_lonquimay_barco").appendChild(node);
+                        }
+                        if (name.includes("lonquimayudec")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_lonquimayudec").appendChild(node);
+                        }
+                        if (name.includes("TOLHUACA-laguna")){
+                            var x = document.createElement("img");
+                            x.setAttribute("src", "https://drive.google.com/uc?id="+id);
+                            x.setAttribute("width", "200");
+                            x.setAttribute("height", "150");
+                            x.setAttribute("alt", name);
+                            x.setAttribute("data-original","https://drive.google.com/uc?id="+id)
+                            var node = document.createElement("td");
+                            node.appendChild(x);
+                            document.getElementById("galley_tolhuacaudec").appendChild(node);
+                        }
+                        }
+                        setTimeout(imgAjax, interval);
+                        }
+                });
+                }
+     setTimeout(imgAjax, interval);  

@@ -1,0 +1,109 @@
+extends layout
+block content
+    .jumbotron
+        .row
+            .col-md-1(style='margin-top: -10px;')
+                button#sidebarCollapse.btn.btn-info(type='button', style='margin-top: -100px;')
+                 i.fas.fa-align-left Menu
+            .col-sm-4
+                input#periodIni.form-control.datetimepicker-input(type="text" data-toggle="datetimepicker" data-target="#periodIni")
+            .col-sm-6
+                button.btn.btn-primary(type='button'  onclick="join_img()") Search
+        #galley
+            img#img_resumen( width="900" height="450" src='' alt='')
+            
+
+    script.
+
+        window.addEventListener('DOMContentLoaded', function () {
+            var galley = document.getElementById('galley');
+            var viewer = new Viewer(galley, {
+            url: 'src',
+            title: function (image) {
+            return image.alt + ' (' + (this.index + 1) + '/' + this.length + ')';
+           },
+         });
+        });
+
+        function join_img(){
+            let time=document.getElementById("periodIni").value;
+            let query="altoBiobio_"+time;
+            imgAjax(query);
+            document.getElementById("img_resumen").src = "/images/tenor.gif"; 
+            sleep(2000).then(() => { imgAjax(query, "1"); });
+            console.log(query);
+        }
+        function sleep(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        $(function () {
+            $('#periodIni').datetimepicker({
+                    viewMode: 'years',
+                    format: 'YYYY-MM-DD'
+            });
+        });
+        $(document).ready(function () {
+                $("#sidebar").mCustomScrollbar({
+                    theme: "minimal"
+                });
+
+                $('#dismiss, .overlay').on('click', function () {
+                    $('#sidebar').removeClass('active');
+                    $('.overlay').removeClass('active');
+                });
+
+                $('#sidebarCollapse').on('click', function () {
+                    $('#sidebar').addClass('active');
+                    $('.overlay').addClass('active');
+                    $('.collapse.in').toggleClass('in');
+                    $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+                });
+            });
+
+
+
+        window.onload = function() {
+        };
+
+        function imgAjax(DataString, aux) {
+        let data= {}; 
+        let aux_1= aux;
+        let aux_name= "";
+        data.DataString=DataString;
+                $.ajax({
+                        type: 'POST',
+                        url: '/resumen_post',  
+                        data: JSON.stringify(data),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function (data) {
+                        },
+                        complete: function (data) {
+                        $("galley_2").empty();
+                        var json = eval(JSON.parse(data.responseText));
+                        console.log(json);
+
+                        if(aux==1){
+                        for (var i = 0; i < json.length; i++){
+    
+                            var name= json[i].name
+                            var id= json[i].id
+                            console.log("https://drive.google.com/uc?id="+id);
+                            img_src = "https://drive.google.com/uc?id="+id; 
+                            document.getElementById("img_resumen").src = img_src; 
+                                                        
+                        
+                        }
+                        if (json.includes("No files found"))
+                        {
+                            console.log("archivo no encontrado");
+                            document.getElementById("img_resumen").src = "/images/imagenno.jpg"; 
+
+                        }
+                        }
+
+                    }
+                });
+                }
+    
