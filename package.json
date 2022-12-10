@@ -10,7 +10,7 @@
     "datatables.net": "^1.10.20",
     "datatables.net-dt": "^1.10.20",
     "debug": "~2.6.9",
-    "express": "~4.16.1",
+    "express": "~4.17.3",
     "googleapis": "^49.0.0",
     "http-errors": "~1.6.3",
     "jquery": "^3.5.0",
